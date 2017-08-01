@@ -1,19 +1,18 @@
 package bcircle;
 
-import org.apache.chemistry.opencmis.client.api.ChangeEvent;
-import org.apache.chemistry.opencmis.client.api.ChangeEvents;
-import org.apache.chemistry.opencmis.client.api.Session;
-import org.apache.chemistry.opencmis.client.api.SessionFactory;
+import org.apache.chemistry.opencmis.client.api.*;
 import org.apache.chemistry.opencmis.client.runtime.SessionFactoryImpl;
 import org.apache.chemistry.opencmis.commons.SessionParameter;
+import org.apache.chemistry.opencmis.commons.data.RepositoryInfo;
 import org.apache.chemistry.opencmis.commons.enums.BindingType;
+import org.apache.chemistry.opencmis.commons.enums.ChangeType;
 import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class OpenCmisTest {
-    public  Session createSession () {
+    public Session createSession() {
         SessionFactory factory = SessionFactoryImpl.newInstance();
         Map<String, String> parameter = new HashMap<String, String>();
 
@@ -25,17 +24,32 @@ public class OpenCmisTest {
         parameter.put(SessionParameter.REPOSITORY_ID, "-default-");
 
         Session session = factory.createSession(parameter);
-        return  session;
+        return session;
     }
 
     @Test
-    public  void checkLogTest() {
-       Session session = createSession();
-       ChangeEvents changes = session.getContentChanges(null, false, 100);
-       for(ChangeEvent change : changes.getChangeEvents()) {
-           System.out.println(change.getChangeType());
-           System.out.println(change.getObjectId());
-       }
-        System.out.println(changes.getLatestChangeLogToken());
+    public void checkLogTest() {
+        Session session = createSession();
+
+        RepositoryInfo ri = session.getBinding().getRepositoryService().getRepositoryInfo(session.getRepositoryInfo().getId(), null);
+        String latestChangeLogToken = ri.getLatestChangeLogToken();
+        System.out.println(latestChangeLogToken);
+
+
+        String token = "0";
+
+        while (token != null) {
+            ChangeEvents changes = session.getContentChanges(token, false, 1);
+            for (ChangeEvent change : changes.getChangeEvents()) {
+                System.out.println(change.getChangeType());
+                if (change.getChangeType() != ChangeType.DELETED) {
+                    String id = change.getObjectId();
+                    CmisObject object = session.getObject(id);
+                    System.out.println(object.getName());
+                }
+            }
+            token = changes.getLatestChangeLogToken();
+            System.out.println("Token = " + token);
+        }
     }
 }
